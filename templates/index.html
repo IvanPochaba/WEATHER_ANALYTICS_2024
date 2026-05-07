@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Analytics 2024: Bratislava vs Victoria</title>
+    <!-- OPRACOVANÉ: Správne načítanie Plotly z cdnjs -->
+    <!--<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script> -->
+        <script src="https://cdn.plot.ly/plotly-3.4.0.min.js" charset="utf-8"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: #003b6f;
+            color: #005385;
+        }
+        header h4 {
+            margin: 0;
+            margin-bottom: 8px;
+        }
+        header h1 {
+            margin-bottom: 10px;
+        }
+        header {
+            background-color:;
+            color: #D97068;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* TABUĽKY - ŠPECIFIKOVANÉ PRE BRATISLAVU A VICTORIU */
+        .table-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+        .city-table-wrapper {
+            flex: 1;
+            min-width: 400px;
+            background: #FBF1D1;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px 8px;
+            border: 1px solid #ddd;
+            text-align: center;
+            font-size: 14px;
+        }
+        .header-bratislava {
+            background-color: #28a745;
+            color: #005385;
+        }
+        .header-victoria {
+            background-color: #fd7e14;
+            color: #005385;
+        }
+        .city-title {
+            margin: 0;
+            padding: 15px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        /* GRAFY POD TABUĽKAMI */
+        .charts-section {
+            margin-top: 40px;
+        }
+        .charts-section h2 {
+            text-align: center;
+            color: #D97068;
+            margin-bottom: 30px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 25px;
+        }
+        .chart-card {
+            background: #90D5FF;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            height: 450px;
+            border-top: 4px solid #3498db;
+        }
+        .chart-title {
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #005385;
+        }
+
+        .error-container {
+            color: #005385;
+            background-color: #FDEA9F;
+            border: 1px solid #f5c6cb;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .no-data {
+            padding: 50px;
+            text-align: center;
+            font-style: italic;
+            color: #005385;
+        }
+
+        @media (max-width: 768px) {
+            .table-container { flex-direction: column; }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>🌤️ Weather Analytics 2024</h1>
+        <h3>  Bratislava (SK) a Victoria (CA)</h3>
+        <h4>Meteorologické metriky v období 02.03.-15.03.2024</h4>
+        <h4>☀️ Relatívny slnečný svit (Srel %)</h4>
+        <h4>🌱 Teplota nad rastovú teplotu 5°C (GDD °C)</h4>
+        ️<h4>🌧️ Intenzita zrážok v daný deň (Rdi mm/h)</h4>
+        <h4>💨 Index veternej expozície (Di)</h4>
+    </header>
+
+    <div class="container">
+        {% if error %}
+            <div class="error-container">
+                <strong>❌ Chyba pri načítaní dát:</strong><br>
+                {{ error }}
+            </div>
+        {% elif not data %}
+            <div class="no-data">
+                <h3>📊 Dáta sa nepodarilo načítať</h3>
+                <p>Skontrolujte pripojenie k internetu alebo API kľúč.</p>
+            </div>
+        {% else %}
+            <!-- TABUĽKY - Najprv Bratislava, potom Victoria -->
+            <div class="table-container">
+                {% for city in ['Bratislava', 'Victoria'] %}
+                    {% if city in data %}
+                    <div class="city-table-wrapper">
+                        <h3 class="city-title">{{ city }}</h3>
+                        <table>
+                            <thead>
+                                <tr class="header-{{ city.lower() }}">
+                                    <th>📅 Dátum</th>
+                                    <th>☀️ Srel</th>
+                                    <th>🌱 GDD</th>
+                                    <th>🌧️ Rdi</th>
+                                    <th>💨 Di</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for day in data[city] %}
+                                <tr>
+                                    <td>{{ day.date }}</td>
+                                    <td>{{ "%.2f"|format(day.s_rel) }}%</td>
+                                    <td>{{ "%.2f"|format(day.gdd) }}</td>
+                                    <td>{{ "%.2f"|format(day.rdi) }}</td>
+                                    <td>{{ "%.2f"|format(day.di) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- GRAFY POD TABUĽKAMI -->
+            <div class="charts-section">
+                <h2>📈 Porovnanie meteorologických metrík</h2>
+                <div class="grid">
+                    <div class="chart-card">
+                        <div class="chart-title">☀️ Relatívny slnečný svit (Srel %)</div>
+                        <div id="plot_s_rel" style="height:400px;"></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-title">🌱 Teplota nad rastovú teplotu 5°C (GDD °C)</div>
+                        <div id="plot_gdd" style="height:400px;"></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-title">🌧️ Intenzita zrážok v daný deň (Rdi mm/h)</div>
+                        <div id="plot_rdi" style="height:400px;"></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-title">💨 Index veternej expozície (Di)</div>
+                        <div id="plot_di" style="height:400px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // KONTROLA: Plotly načítané?
+                    if (typeof Plotly === 'undefined') {
+                        document.body.innerHTML += '<div class="error-container">❌ Chyba: Plotly sa nenačítalo!</div>';
+                        console.error("Plotly library not loaded!");
+                        return;
+                    }
+
+                    const weatherData = {{ data | tojson | safe }};
+                    console.log("✅ Dáta načítané:", Object.keys(weatherData));
+
+                    // FARBY PRE MESTÁ
+                    const colors = {
+                        'Bratislava': '#28a745',
+                        'Victoria': '#fd7e14'
+                    };
+
+                    const metrics = [
+                        { id: 's_rel', title: 'Relatívny slnečný svit (%)' },
+                        { id: 'gdd', title: 'GDD (Rastový potenciál)' },
+                        { id: 'rdi', title: 'Intenzita zrážok (mm/h)' },
+                        { id: 'di', title: 'Index veternej expozície' }
+                    ];
+
+                    metrics.forEach(metric => {
+                        const traces = Object.keys(weatherData).map(city => {
+                            const dataCity = weatherData[city];
+                            return {
+                                x: dataCity.map(d => d.date),
+                                y: dataCity.map(d => d[metric.id]),
+                                name: city,
+                                type: 'scatter',
+                                mode: 'lines+markers',
+                                line: {
+                                    color: colors[city],
+                                    shape: 'spline',
+                                    width: 3
+                                },
+                                marker: { size: 6 }
+                            };
+                        });
+
+                        const layout = {
+                            hovermode: 'x unified',
+                            margin: { l: 60, r: 20, t: 20, b: 60 },
+                            font: { color: '#005385' },
+                            xaxis: {
+                                title: 'Dátum',
+                                tickangle: -45,
+                                gridcolor: '#005385',
+                                type: 'date'
+                            },
+                            yaxis: {
+                                gridcolor: '#005385',
+                                title: metric.title.includes('Srel') ? '%' : metric.id.toUpperCase()
+                            },
+                            legend: {
+                                orientation: 'h',
+                                y: -0.25,
+                                x: 0.5,
+                                xanchor: 'center'
+                            },
+                            plot_bgcolor: '#FBF1D1',
+                            paper_bgcolor: 'rgba(0,0,0,0)'
+                        };
+
+                        const config = {
+                            responsive: true,
+                            displayModeBar: true,
+                            displaylogo: false
+                        };
+
+                        const targetDiv = document.getElementById(`plot_${metric.id}`);
+                        if (targetDiv) {
+                            Plotly.newPlot(targetDiv, traces, layout, config);
+                            console.log(`✅ Graf ${metric.id} vytvorený`);
+                        }
+                    });
+                });
+            </script>
+        {% endif %}
+    </div>
+</body>
+</html>
